@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
-    "publish": "wrangler publish",
+    "deploy:worker": "wrangler deploy",
     "tail": "wrangler tail"
   },
   "keywords": [],
