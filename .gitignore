@@ -114,7 +114,6 @@ public
 
 # Cloudflare Workers
 .wrangler/
-worker/
 dist/
 *.map
 
