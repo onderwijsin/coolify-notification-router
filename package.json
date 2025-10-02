@@ -1,0 +1,19 @@
+{
+  "name": "coolify-notifications-router",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "publish": "wrangler publish",
+    "tail": "wrangler tail"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.14.0",
+  "devDependencies": {
+    "wrangler": "^4.41.0"
+  }
+}
