@@ -2,7 +2,7 @@
   "name": "coolify-notifications-router",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "worker/index.js",
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
