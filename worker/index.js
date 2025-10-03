@@ -9,6 +9,29 @@
 
 import CONFIG from "./config.js";
 
+/**
+ * Extract text from Slack event including Block Kit content
+ * @param {Object} event - Slack event object
+ * @returns {string} Combined text from event.text and event.blocks
+ */
+function extractText(event) {
+  let text = event.text || "";
+  
+  // Extract text from Block Kit blocks
+  if (event.blocks && Array.isArray(event.blocks)) {
+    for (const block of event.blocks) {
+      if (block.type === "header" && block.text?.text) {
+        text += "\n" + block.text.text;
+      }
+      if (block.type === "section" && block.text?.text) {
+        text += "\n" + block.text.text;
+      }
+    }
+  }
+  
+  return text;
+}
+
 export default {
   async fetch(request, env, ctx) {
     try {
@@ -44,7 +67,7 @@ export default {
           return new Response("Ignored", { status: 200 });
         }
 
-        const text = event.text || "";
+        const text = extractText(event);
         let targetChannel = null;
 
         // Match against rules

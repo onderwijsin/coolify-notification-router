@@ -1,6 +1,6 @@
 export default [
     {
-        keyword: /deployment/i,
+        keyword: /\bdeploy\w*\b/i,
         targetChannelEnv: "DEPLOYMENTS_CHANNEL_ID",
     },
     {
