@@ -8,35 +8,20 @@
  */
 
 import CONFIG from "./config.js";
+import { extractText, shouldProcessEvent, forwardMessage } from "./utils.js";
 
-/**
- * Extract text from Slack event including Block Kit content
- * @param {Object} event - Slack event object
- * @returns {string} Combined text from event.text and event.blocks
- */
-function extractText(event) {
-  let text = event.text || "";
-  
-  // Extract text from Block Kit blocks
-  if (event.blocks && Array.isArray(event.blocks)) {
-    for (const block of event.blocks) {
-      if (block.type === "header" && block.text?.text) {
-        text += "\n" + block.text.text;
-      }
-      if (block.type === "section" && block.text?.text) {
-        text += "\n" + block.text.text;
-      }
-    }
-  }
-  
-  return text;
-}
 
 export default {
-  async fetch(request, env, ctx) {
+  async fetch(request, env, _ctx) {
     try {
       if (request.method !== "POST") {
         return new Response("Only POST allowed", { status: 405 });
+      }
+
+      // 🔒 Verify Slack request authenticity
+      const verified = await verifySlackRequest(request, env.SLACK_SIGNING_SECRET);
+      if (!verified) {
+        return new Response("Unauthorized", { status: 403 });
       }
 
       const body = await request.json();
@@ -54,7 +39,7 @@ export default {
         console.log("Processing event:", JSON.stringify(event));
 
         // Only handle messages from the configured source channel
-        if (event.channel !== env.SOURCE_CHANNEL_ID || event.type !== "message") {
+        if (!shouldProcessEvent(event, env.SOURCE_CHANNEL_ID)) {
           console.log(
             `Ignored event. channel=${event.channel}, expected=${env.SOURCE_CHANNEL_ID}, type=${event.type}`
           );
@@ -96,37 +81,3 @@ export default {
     }
   },
 };
-
-async function forwardMessage(event, targetChannel, env) {
-  const slackToken = env.SLACK_BOT_TOKEN;
-
-  const payload = {
-    channel: targetChannel,
-    text: event.text || "[no text]",
-  };
-
-  if (event.attachments) {
-    payload.attachments = event.attachments;
-  }
-  if (event.blocks) {
-    payload.blocks = event.blocks;
-  }
-
-  console.log("➡️ Forwarding payload:", JSON.stringify(payload));
-
-  const res = await fetch("https://slack.com/api/chat.postMessage", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${slackToken}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-
-  const result = await res.json();
-  if (!result.ok) {
-    console.error(`❌ Slack API error: ${result.error}`, JSON.stringify(result));
-  } else {
-    console.log(`✅ Message posted to ${targetChannel}, ts=${result.ts}`);
-  }
-}
