@@ -8,7 +8,7 @@
  */
 
 import CONFIG from "./config.js";
-import { extractText, shouldProcessEvent, forwardMessage } from "./utils.js";
+import { extractText, shouldProcessEvent, forwardMessage, verifySlackRequest } from "./utils.js";
 
 
 export default {
