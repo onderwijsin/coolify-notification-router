@@ -8,99 +8,11 @@
  */
 
 import CONFIG from "./config.js";
+import { extractText, shouldProcessEvent, forwardMessage } from "./utils.js";
 
-/**
- * Maximum number of retries for transient errors
- */
-const MAX_RETRIES = 3;
-
-
-/**
- * Extract text from Slack event including Block Kit content
- * @param {Object} event - Slack event object
- * @returns {string} Combined text from event.text and event.blocks
- */
-function extractText(event) {
-  let text = event.text || "";
-  
-  // Extract text from Block Kit blocks
-  if (event.blocks && Array.isArray(event.blocks)) {
-    for (const block of event.blocks) {
-      if (block.type === "header" && block.text?.text) {
-        text += "\n" + block.text.text;
-      }
-      if (block.type === "section" && block.text?.text) {
-        text += "\n" + block.text.text;
-      }
-    }
-  }
-  
-  return text;
-}
-
-/**
- * Sends a fetch request to Slack with retry logic and exponential backoff.
- * @param {Request} request - Prepared Slack API fetch request.
- * @param {number} [retries=MAX_RETRIES] - Number of retry attempts.
- * @returns {Promise<Response>} The final fetch response if successful.
- */
-async function sendWithRetry(request, retries = MAX_RETRIES) {
-  const baseDelay = 500;
-  for (let i = 0; i < retries; i++) {
-    try {
-      const res = await fetch(request);
-      if (res.ok) return res;
-      if (res.status === 429 || res.status >= 500) {
-        await new Promise(r => setTimeout(r, baseDelay * 2 ** i));
-        continue;
-      }
-      return res;
-    } catch (err) {
-      if (i === retries - 1) throw err;
-      await new Promise(r => setTimeout(r, baseDelay * 2 ** i));
-    }
-  }
-  throw new Error('Slack API failed after maximum retries.');
-}
-
-
-
-async function forwardMessage(event, targetChannel, env) {
-  const slackToken = env.SLACK_BOT_TOKEN;
-
-  const payload = {
-    channel: targetChannel,
-    text: event.text || "[no text]",
-  };
-
-  if (event.attachments) {
-    payload.attachments = event.attachments;
-  }
-  if (event.blocks) {
-    payload.blocks = event.blocks;
-  }
-
-  console.log("➡️ Forwarding payload:", JSON.stringify(payload));
-
-  const res = await sendWithRetry("https://slack.com/api/chat.postMessage", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${slackToken}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-
-  const result = await res.json();
-  if (!result.ok) {
-    console.error(`❌ Slack API error: ${result.error}`, JSON.stringify(result));
-  } else {
-    console.log(`✅ Message posted to ${targetChannel}, ts=${result.ts}`);
-  }
-}
 
 export default {
-  async fetch(request, env, ctx) {
+  async fetch(request, env, _ctx) {
     try {
       if (request.method !== "POST") {
         return new Response("Only POST allowed", { status: 405 });
@@ -121,7 +33,7 @@ export default {
         console.log("Processing event:", JSON.stringify(event));
 
         // Only handle messages from the configured source channel
-        if (event.channel !== env.SOURCE_CHANNEL_ID || event.type !== "message") {
+        if (!shouldProcessEvent(event, env.SOURCE_CHANNEL_ID)) {
           console.log(
             `Ignored event. channel=${event.channel}, expected=${env.SOURCE_CHANNEL_ID}, type=${event.type}`
           );
