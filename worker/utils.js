@@ -60,7 +60,7 @@ export async function sendWithRetry(request, retries = MAX_RETRIES) {
  * @param {string} sourceChannelId - Allowed source channel ID from environment.
  * @returns {boolean} True if event should be processed, false otherwise.
  */
-function shouldProcessEvent(event, sourceChannelId) {
+export function shouldProcessEvent(event, sourceChannelId) {
   if (!event || !event.channel || event.type !== "message") return false;
   return event.channel === sourceChannelId;
 }
