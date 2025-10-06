@@ -47,10 +47,24 @@ Each `targetChannelEnv` must exist as an environment variable containing the Sla
 
 ---
 
-### Finding Slack IDs
+### Finding Slack Channel IDs
 
-* **Channel ID**: right-click a Slack channel → *Copy link* → ID is the last part of the URL (e.g., `C8FJ2K4LMN9`).
-* **Bot ID**: look in the event payload logs (`bot_id` field).
+Right-click a Slack channel → *Copy link* → ID is the last part of the URL (e.g., `D1QR2K4PVN2`)
+
+### 🔍 Finding Your Bot ID
+
+To get your bot’s ID, use your **Bot User OAuth Token** (`xoxb-...`).
+Run this command in your terminal:
+
+```bash
+curl -s -X POST https://slack.com/api/auth.test \
+  -H "Authorization: Bearer xoxb-your-bot-token"
+```
+
+The response includes `"bot_id": "BXXXXXXXXXX"`.
+That is the value you should set as `ALLOWED_BOT_ID` in your Cloudflare Worker environment.
+
+You can also find this using Slack’s [API Tester](https://api.slack.com/methods/auth.test/test) by selecting your bot token and clicking **Test Method**.
 
 ---
 
