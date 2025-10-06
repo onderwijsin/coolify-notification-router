@@ -158,7 +158,6 @@ Common issues:
 
 * The Worker uses the **Web Crypto API** (`crypto.subtle`) for HMAC signing.
 * A `timingSafeEqual` helper prevents signature timing leaks.
-* Retries up to `MAX_RETRIES = 3` on Slack API 429 or 5xx errors.
 * Only processes events from `SOURCE_CHANNEL_ID`; everything else is ignored.
 
 If you’re running locally or self-hosting, ensure the **crypto flag** is enabled so HMAC operations work correctly.
