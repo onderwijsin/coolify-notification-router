@@ -1,3 +1,5 @@
+import crypto from "node:crypto"
+
 
 /**
  * Extract text from Slack event including Block Kit content
@@ -133,4 +135,77 @@ export async function forwardMessage(event, targetChannel, env) {
   } else {
     console.log(`✅ Message posted to ${targetChannel}, ts=${result.ts}`);
   }
+}
+
+/**
+ * Performs a constant-time comparison between two strings to prevent timing attacks.
+ * @param {string} a - First string to compare.
+ * @param {string} b - Second string to compare.
+ * @returns {boolean} True if strings are equal, false otherwise.
+ */
+function timingSafeEqual(a, b) {
+  const aBytes = new TextEncoder().encode(a);
+  const bBytes = new TextEncoder().encode(b);
+  if (aBytes.length !== bBytes.length) return false;
+
+  let result = 0;
+  for (let i = 0; i < aBytes.length; i++) {
+    result |= aBytes[i] ^ bBytes[i];
+  }
+  return result === 0;
+}
+
+/**
+ * Verifies authenticity of an incoming Slack request using the signing secret.
+ * Implements the full procedure described in Slack’s official documentation:
+ * https://docs.slack.dev/authentication/verifying-requests-from-slack/
+ *
+ * @param {Request} request - The incoming HTTP request from Slack.
+ * @param {string} signingSecret - Slack app signing secret from environment variables.
+ * @returns {Promise<boolean>} - Resolves true if the request is verified, false otherwise.
+ */
+export async function verifySlackRequest(request, signingSecret) {
+  const timestamp = request.headers.get("x-slack-request-timestamp");
+  const slackSignature = request.headers.get("x-slack-signature");
+
+  if (!timestamp || !slackSignature) {
+    console.warn("Missing Slack signature headers");
+    return false;
+  }
+
+  // 1️⃣ Replay protection: reject requests older than 5 minutes
+  const now = Math.floor(Date.now() / 1000);
+  if (Math.abs(now - Number(timestamp)) > 60 * 5) {
+    console.warn("Slack request too old — possible replay attack");
+    return false;
+  }
+
+  // 2️⃣ Read raw body for signing — must match exactly what Slack sent
+  const rawBody = await request.clone().text();
+  const baseString = `v0:${timestamp}:${rawBody}`;
+
+  // 3️⃣ Compute HMAC SHA256 using Slack signing secret
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(signingSecret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+
+  const sigBuffer = await crypto.subtle.sign("HMAC", key, encoder.encode(baseString));
+  const computedSignature =
+    "v0=" +
+    Array.from(new Uint8Array(sigBuffer))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+
+  // 4️⃣ Timing-safe comparison (constant time)
+  if (!timingSafeEqual(computedSignature, slackSignature)) {
+    console.warn("Slack signature mismatch");
+    return false;
+  }
+
+  return true;
 }

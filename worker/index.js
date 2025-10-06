@@ -18,6 +18,12 @@ export default {
         return new Response("Only POST allowed", { status: 405 });
       }
 
+      // 🔒 Verify Slack request authenticity
+      const verified = await verifySlackRequest(request, env.SLACK_SIGNING_SECRET);
+      if (!verified) {
+        return new Response("Unauthorized", { status: 403 });
+      }
+
       const body = await request.json();
       console.log("Incoming body:", JSON.stringify(body));
 
