@@ -23,37 +23,6 @@ export function extractText(event) {
   
   return text;
 }
-
-/**
- * Maximum number of retries for transient errors
- */
-const MAX_RETRIES = 3;
-
-/**
- * Sends a fetch request to Slack with retry logic and exponential backoff.
- * @param {Request} request - Prepared Slack API fetch request.
- * @param {number} [retries=MAX_RETRIES] - Number of retry attempts.
- * @returns {Promise<Response>} The final fetch response if successful.
- */
-export async function sendWithRetry(request, retries = MAX_RETRIES) {
-  const baseDelay = 500;
-  for (let i = 0; i < retries; i++) {
-    try {
-      const res = await fetch(request);
-      if (res.ok) return res;
-      if (res.status === 429 || res.status >= 500) {
-        await new Promise(r => setTimeout(r, baseDelay * 2 ** i));
-        continue;
-      }
-      return res;
-    } catch (err) {
-      if (i === retries - 1) throw err;
-      await new Promise(r => setTimeout(r, baseDelay * 2 ** i));
-    }
-  }
-  throw new Error('Slack API failed after maximum retries.');
-}
-
 /**
  * Determines whether an incoming Slack event should be processed.
  * @param {object} event - The Slack event object.
@@ -120,7 +89,7 @@ export async function forwardMessage(event, targetChannel, env) {
 
   console.log("➡️ Forwarding payload:", JSON.stringify(payload));
 
-  const res = await sendWithRetry("https://slack.com/api/chat.postMessage", {
+  const res = await fetch("https://slack.com/api/chat.postMessage", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${slackToken}`,

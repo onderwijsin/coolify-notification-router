@@ -21,6 +21,7 @@ export default {
       // 🔒 Verify Slack request authenticity
       const verified = await verifySlackRequest(request, env.SLACK_SIGNING_SECRET);
       if (!verified) {
+        console.log("Unauthorized request");
         return new Response("Unauthorized", { status: 403 });
       }
 
